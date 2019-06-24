@@ -19,13 +19,14 @@ public class JDBCCreateTable {
     private static String password;
     private static Connection con = null;
     private static Statement stmt = null;
-    private static final String DBDRIVER = "org.gjt.mm.mysql.Driver";
     private static Procedure procedure=null;
+    private static String hostname="localhost:3306";
     private static ArrayList<String> messages=new ArrayList<>();
     static Connection getConnection() {
 
         String DBURL =
-                "jdbc:mysql://localhost:3306/" +
+                "jdbc:mysql://" +hostname+
+                        "/" +
                         dbName +
                         "?user=" + username +
                         "&password=" + password + "&useUnicode=true&characterEncoding=UTF-8";
@@ -341,7 +342,7 @@ public class JDBCCreateTable {
             messages.add("enter the product name");
             messages.add("enter the type of the product");
             messages.add("enter the product price");
-            messages.add("enter the warehouse to store the product, if you wanna leave it" +
+            messages.add("enter the warehouse to store the product, if you wanna leave it " +
                     "empty, type 'null'");
             return messages;
         }
@@ -688,7 +689,7 @@ public class JDBCCreateTable {
                     id+
                     ");");
             ResultSet res=executeCommand("call read_seller();");
-            ArrayList ans = print_res(res);
+            ArrayList<String> ans = print_res(res);
             ans.add(0, "successfully delete the seller!");
             ans.add(1, "here's the data after the change:");
             return ans;
@@ -702,8 +703,54 @@ public class JDBCCreateTable {
             return messages;
         }
     }
+    private static class check_seller_by_order_id implements Procedure{
+
+        @Override
+        public ArrayList<String> execute(String cmd) throws SQLException {
+            Scanner scan= new Scanner(cmd);
+            String id = scan.nextLine();
+            ResultSet res =executeCommand("call online_shopping.check_seller_by_order_id(" +
+                    id +
+                    ");");
+            ArrayList<String> ans = print_res(res);
+            ans.add(0, "here are the seller's address and phone number for that order");
+            return ans;
+        }
+
+        @Override
+        public ArrayList<String> print() throws SQLException {
+            messages.clear();
+            messages.add("here are all the orders:");
+            messages.addAll(print_res(executeCommand("call read_order();")));
+            messages.add("enter the order id to get seller's address and phone number");
+            return messages;
+        }
+    }
 
 
+    private static class check_customers_by_seller_id implements Procedure{
+
+        @Override
+        public ArrayList<String> execute(String cmd) throws SQLException {
+            Scanner scan= new Scanner(cmd);
+            String id = scan.nextLine();
+            ResultSet res =executeCommand("call online_shopping.check_customers_by_seller_id(" +
+                    id +
+                    ");");
+            ArrayList<String> ans = print_res(res);
+            ans.add(0, "here are all the customers who had purchases for the seller:");
+            return ans;
+        }
+
+        @Override
+        public ArrayList<String> print() throws SQLException {
+            messages.clear();
+            messages.add("here are all the sellers:");
+            messages.addAll(print_res(executeCommand("call read_seller();")));
+            messages.add("enter the seller id to get all the customers who had purchases for that seller");
+            return messages;
+        }
+    }
     private static class NullProcedure implements Procedure{
         @Override
         public ArrayList<String> execute(String cmd) throws SQLException {
@@ -777,7 +824,9 @@ public class JDBCCreateTable {
                 procedure = new update_order();
             } else if (operation.equals("delete")) {
                 procedure = new delete_order();
-            } else {
+            }else if(operation.equals("check_seller")){
+                procedure = new check_seller_by_order_id();
+            } else{
                 procedure = new NullProcedure();
             }
         } else if (entity.equals("product")) {
@@ -802,6 +851,8 @@ public class JDBCCreateTable {
                 procedure = new update_seller();
             } else if (operation.equals("delete")) {
                 procedure = new delete_seller();
+            } else if (operation.equals("check_customers")) {
+                procedure = new check_customers_by_seller_id();
             } else {
                 procedure = new NullProcedure();
             }
@@ -834,10 +885,12 @@ public class JDBCCreateTable {
         return c;
     }
 
-    public static Record processLogin(String username2, String password2) {
+    public static Record processLogin(String hostname2,String username2, String password2) {
         Record c =new Record();
+        hostname=hostname2;
         username=username2;
         password=password2;
+//        System.out.println(username2+", "+password2);
         if(tryConnect()) {
             c.addRecord("yes");
         }else{

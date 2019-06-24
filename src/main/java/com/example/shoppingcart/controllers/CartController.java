@@ -46,9 +46,9 @@ public class CartController {
             }
     }
     @GetMapping("/login")
-    Record login(@PathParam("username") String username, @PathParam("password")String password){
+    Record login(@PathParam("hostname")String hostname,@PathParam("username") String username, @PathParam("password")String password){
         try{
-        return db.processLogin(username, password);}
+        return db.processLogin(hostname,username, password);}
         catch(Exception e){
             Record c=new Record();
             c.addRecord(e.getMessage());
